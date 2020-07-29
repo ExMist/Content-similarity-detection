@@ -55,7 +55,6 @@ vectorize_images(IMAGE_DIR, IMAGE_SIZE, preprocessor, model, VECTOR_FILE)
 IMAGE_SIZE = 224
 VECTOR_FILE = os.path.join(DATA_DIR, "resnet-vectors.tsv")
 resnet_model = resnet50.ResNet50(weights="imagenet", include_top=True)
-
 model = Model(inputs=resnet_model.input, outputs=resnet_model.get_layer("avg_pool").output)
 preprocessor = resnet50.preprocess_input
 vectorize_images(IMAGE_DIR, IMAGE_SIZE, preprocessor, model, VECTOR_FILE)
@@ -63,7 +62,6 @@ vectorize_images(IMAGE_DIR, IMAGE_SIZE, preprocessor, model, VECTOR_FILE)
 IMAGE_SIZE = 299
 VECTOR_FILE = os.path.join(DATA_DIR, "xception-vectors.tsv")
 xception_model = xception.Xception(weights="imagenet", include_top=True)
-
 model = Model(inputs=xception_model.input, outputs=xception_model.get_layer("avg_pool").output)
 preprocessor = xception.preprocess_input
 vectorize_images(IMAGE_DIR, IMAGE_SIZE, preprocessor, model, VECTOR_FILE)

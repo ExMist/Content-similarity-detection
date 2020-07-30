@@ -6,7 +6,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 from sklearn.model_selection import KFold
 
 
-def get_holiday_triples(image_dir):
+def get_images(image_dir):
     image_groups = {}
     for image_name in os.listdir(image_dir):
         base_name = image_name[0:-4]
@@ -39,6 +39,41 @@ def get_holiday_triples(image_dir):
     print("Generated {:d} pos + {:d} neg = {:d} total image triples"
           .format(num_sims, num_sims, 2 * num_sims))
     return image_triples
+
+
+def train_test_split(triples, splits):
+    assert sum(splits) == 1.0
+    split_pts = np.cumsum(np.array([0.] + splits))
+    indices = np.random.permutation(np.arange(len(triples)))
+    shuffled_triples = [triples[i] for i in indices]
+    data_splits = []
+    for sid in range(len(splits)):
+        start = int(split_pts[sid] * len(triples))
+        end = int(split_pts[sid + 1] * len(triples))
+        data_splits.append(shuffled_triples[start:end])
+    return data_splits
+
+
+def batch_to_vectors(batch, vec_size, vec_dict):
+    X1 = np.zeros((len(batch), vec_size))
+    X2 = np.zeros((len(batch), vec_size))
+    Y = np.zeros((len(batch), 2))
+    for tid in range(len(batch)):
+        X1[tid] = vec_dict[batch[tid][0].encode()]
+        X2[tid] = vec_dict[batch[tid][1].encode()]
+        Y[tid] = [1, 0] if batch[tid][2] == 0 else [0, 1]
+    return ([X1, X2], Y)
+
+
+def data_generator(triples, vec_size, vec_dict, batch_size=32):
+    while True:
+        # shuffle once per batch
+        indices = np.random.permutation(np.arange(len(triples)))
+        num_batches = len(triples) // batch_size
+        for bid in range(num_batches):
+            batch_indices = indices[bid * batch_size: (bid + 1) * batch_size]
+            batch = [triples[i] for i in batch_indices]
+            yield batch_to_vectors(batch, vec_size, vec_dict)
 
 
 def load_vectors(vector_file):
@@ -83,3 +118,9 @@ def get_model_file(data_dir, vec_name, clf_name):
 
 def save_model(model, model_file):
     joblib.dump(model, model_file)
+
+
+def get_model_file(data_dir, vector_name, merge_mode, borf):
+    return os.path.join(data_dir, "models", "{:s}-{:s}-{:s}.h5"
+                        .format(vector_name, merge_mode, borf))
+

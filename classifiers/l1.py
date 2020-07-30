@@ -27,7 +27,7 @@ def preprocess_data(vector_file, train_size=0.7):
     for image_triple in image_triples:
         X1 = vec_dict[image_triple[0].encode()]
         X2 = vec_dict[image_triple[1].encode()]
-        xdata.append(np.multiply(X1, X2) / (np.linalg.norm(X1, 2) * np.linalg.norm(X2, 2)))
+        xdata.append(np.abs(np.subtract(X1, X2)))
         ydata.append(image_triple[2])
     X, y = np.array(xdata), np.array(ydata)
     Xtrain, Xtest, ytrain, ytest = train_test_split(X, y, train_size=train_size)

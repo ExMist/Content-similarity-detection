@@ -71,7 +71,6 @@ def evaluate_model(model_file, test_gen):
     print(classification_report(ytrue, ypred))
     return accuracy
 
-
 scores = np.zeros((len(VECTORIZERS), len(MERGE_MODES)))
 image_triples = get_images(IMAGE_DIR)
 
@@ -200,15 +199,197 @@ best_accuracy = evaluate_model(best_model_name, test_gen)
 
 scores[0, 3] = best_accuracy if best_accuracy > final_accuracy else final_accuracy
 
-width = 0.3
-plt.bar(np.arange(scores.shape[1]), scores[0], width, color="#795ba8", label="Inception-V3")
-plt.bar(np.arange(scores.shape[1]) + width, scores[1], width, color="purple", label="ResNet-50")
+VECTOR_SIZE = 2048
+VECTOR_FILE = os.path.join(DATA_DIR, "resnet-vectors.tsv")
+vec_dict = load_vectors(VECTOR_FILE)
+train_gen = data_generator(train_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+val_gen = data_generator(val_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+
+input_1 = Input(shape=(VECTOR_SIZE,))
+input_2 = Input(shape=(VECTOR_SIZE,))
+merged = Concatenate(axis=-1)([input_1, input_2])
+
+fc1 = Dense(512, kernel_initializer="glorot_uniform")(merged)
+fc1 = Dropout(DROPOUT)(fc1)
+fc1 = Activation(LeakyReLU(ALPHA))(fc1)
+
+fc2 = Dense(256, kernel_initializer="glorot_uniform")(fc1)
+fc2 = Dropout(DROPOUT)(fc2)
+fc2 = Activation(LeakyReLU(ALPHA))(fc2)
+
+fc3 = Dense(128, kernel_initializer="glorot_uniform")(fc2)
+fc3 = Dropout(DROPOUT)(fc3)
+fc3 = Activation(LeakyReLU(ALPHA))(fc3)
+
+pred = Dense(2, kernel_initializer="glorot_uniform")(fc3)
+pred = Activation("softmax")(pred)
+
+model = Model(inputs=[input_1, input_2], outputs=pred)
+model.summary()
+
+model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+best_model_name = get_model_file(DATA_DIR, "resnet50", "cat", "best")
+checkpoint = ModelCheckpoint(best_model_name, save_best_only=True)
+train_steps_per_epoch = len(train_triples) // BATCH_SIZE
+val_steps_per_epoch = len(val_triples) // BATCH_SIZE
+history = model.fit_generator(train_gen, steps_per_epoch=train_steps_per_epoch,
+                              epochs=NUM_EPOCHS,
+                              validation_data=val_gen, validation_steps=val_steps_per_epoch,
+                              callbacks=[checkpoint])
+
+final_model_name = get_model_file(DATA_DIR, "resnet50", "cat", "final")
+model.save(final_model_name)
+test_gen = data_generator(test_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+final_accuracy = evaluate_model(final_model_name, test_gen)
+
+test_gen = data_generator(test_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+best_accuracy = evaluate_model(best_model_name, test_gen)
+
+scores[1, 0] = best_accuracy if best_accuracy > final_accuracy else final_accuracy
+
+train_gen = data_generator(train_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+val_gen = data_generator(val_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+
+input_1 = Input(shape=(VECTOR_SIZE,))
+input_2 = Input(shape=(VECTOR_SIZE,))
+merged = Lambda(cosine_distance,
+                  output_shape=cosine_distance_output_shape)([input_1, input_2])
+
+fc1 = Dense(512, kernel_initializer="glorot_uniform")(merged)
+fc1 = Dropout(DROPOUT)(fc1)
+fc1 = Activation(LeakyReLU(ALPHA))(fc1)
+
+fc2 = Dense(256, kernel_initializer="glorot_uniform")(fc1)
+fc2 = Dropout(DROPOUT)(fc2)
+fc2 = Activation(LeakyReLU(ALPHA))(fc2)
+
+fc3 = Dense(128, kernel_initializer="glorot_uniform")(fc2)
+fc3 = Dropout(DROPOUT)(fc3)
+fc3 = Activation(LeakyReLU(ALPHA))(fc3)
+
+pred = Dense(2, kernel_initializer="glorot_uniform")(fc3)
+pred = Activation("softmax")(pred)
+model = Model(inputs=[input_1, input_2], outputs=pred)
+model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+
+best_model_name = get_model_file(DATA_DIR, "resnet50", "dot", "best")
+checkpoint = ModelCheckpoint(best_model_name, save_best_only=True)
+train_steps_per_epoch = len(train_triples) // BATCH_SIZE
+val_steps_per_epoch = len(val_triples) // BATCH_SIZE
+history = model.fit_generator(train_gen, steps_per_epoch=train_steps_per_epoch,
+                              epochs=NUM_EPOCHS,
+                              validation_data=val_gen, validation_steps=val_steps_per_epoch,
+                              callbacks=[checkpoint])
+
+final_model_name = get_model_file(DATA_DIR, "resnet50", "dot", "final")
+model.save(final_model_name)
+test_gen = data_generator(test_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+final_accuracy = evaluate_model(final_model_name, test_gen)
+
+test_gen = data_generator(test_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+best_accuracy = evaluate_model(best_model_name, test_gen)
+
+scores[1, 1] = best_accuracy if best_accuracy > final_accuracy else final_accuracy
+train_gen = data_generator(train_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+val_gen = data_generator(val_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+
+input_1 = Input(shape=(VECTOR_SIZE,))
+input_2 = Input(shape=(VECTOR_SIZE,))
+merged = Lambda(absdiff, output_shape=absdiff_output_shape)([input_1, input_2])
+
+fc1 = Dense(512, kernel_initializer="glorot_uniform")(merged)
+fc1 = Dropout(DROPOUT)(fc1)
+fc1 = Activation(LeakyReLU(ALPHA))(fc1)
+
+fc2 = Dense(256, kernel_initializer="glorot_uniform")(fc1)
+fc2 = Dropout(DROPOUT)(fc2)
+fc2 = Activation(LeakyReLU(ALPHA))(fc2)
+
+fc3 = Dense(128, kernel_initializer="glorot_uniform")(fc2)
+fc3 = Dropout(DROPOUT)(fc3)
+fc3 = Activation(LeakyReLU(ALPHA))(fc3)
+
+pred = Dense(2, kernel_initializer="glorot_uniform")(fc3)
+pred = Activation("softmax")(pred)
+
+model = Model(inputs=[input_1, input_2], outputs=pred)
+model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+
+best_model_name = get_model_file(DATA_DIR, "resnet50", "l1", "best")
+checkpoint = ModelCheckpoint(best_model_name, save_best_only=True)
+train_steps_per_epoch = len(train_triples) // BATCH_SIZE
+val_steps_per_epoch = len(val_triples) // BATCH_SIZE
+history = model.fit_generator(train_gen, steps_per_epoch=train_steps_per_epoch,
+                              epochs=NUM_EPOCHS,
+                              validation_data=val_gen, validation_steps=val_steps_per_epoch,
+                              callbacks=[checkpoint])
+
+final_model_name = get_model_file(DATA_DIR, "resnet50", "l1", "final")
+model.save(final_model_name)
+test_gen = data_generator(test_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+final_accuracy = evaluate_model(final_model_name, test_gen)
+
+test_gen = data_generator(test_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+best_accuracy = evaluate_model(best_model_name, test_gen)
+
+scores[1, 2] = best_accuracy if best_accuracy > final_accuracy else final_accuracy
+
+train_gen = data_generator(train_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+val_gen = data_generator(val_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+
+input_1 = Input(shape=(VECTOR_SIZE,))
+input_2 = Input(shape=(VECTOR_SIZE,))
+merged = Lambda(euclidean_distance,
+                output_shape=euclidean_distance_output_shape)([input_1, input_2])
+
+fc1 = Dense(512, kernel_initializer="glorot_uniform")(merged)
+fc1 = Dropout(DROPOUT)(fc1)
+fc1 = Activation(LeakyReLU(ALPHA))(fc1)
+
+fc2 = Dense(256, kernel_initializer="glorot_uniform")(fc1)
+fc2 = Dropout(DROPOUT)(fc2)
+fc2 = Activation(LeakyReLU(ALPHA))(fc2)
+
+fc3 = Dense(128, kernel_initializer="glorot_uniform")(fc2)
+fc3 = Dropout(DROPOUT)(fc3)
+fc3 = Activation(LeakyReLU(ALPHA))(fc3)
+
+pred = Dense(2, kernel_initializer="glorot_uniform")(fc3)
+pred = Activation("softmax")(pred)
+
+model = Model(inputs=[input_1, input_2], outputs=pred)
+model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+
+best_model_name = get_model_file(DATA_DIR, "resnet50", "l2", "best")
+checkpoint = ModelCheckpoint(best_model_name, save_best_only=True)
+train_steps_per_epoch = len(train_triples) // BATCH_SIZE
+val_steps_per_epoch = len(val_triples) // BATCH_SIZE
+history = model.fit_generator(train_gen, steps_per_epoch=train_steps_per_epoch,
+                              epochs=NUM_EPOCHS,
+                              validation_data=val_gen, validation_steps=val_steps_per_epoch,
+                              callbacks=[checkpoint])
+
+final_model_name = get_model_file(DATA_DIR, "resnet50", "l2", "final")
+model.save(final_model_name)
+test_gen = data_generator(test_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+final_accuracy = evaluate_model(final_model_name, test_gen)
+
+test_gen = data_generator(test_triples, VECTOR_SIZE, vec_dict, BATCH_SIZE)
+best_accuracy = evaluate_model(best_model_name, test_gen)
+
+scores[1, 3] = best_accuracy if best_accuracy > final_accuracy else final_accuracy
+
+
+merge_strategy = ["Concat", "Dot", "L1", "L2"]
+
+width=0.3
+plt.bar(np.arange(scores.shape[1]), scores[0], width, color="#FF7400", label="Xception")
+plt.bar(np.arange(scores.shape[1])+width, scores[1], width, color="#269926", label="ResNet-50")
 plt.legend(loc=4)
 plt.ylabel("accuracy")
 plt.xlabel("merge strategy")
-plt.xticks(np.arange(scores.shape[1]) + 0.5 * width, MERGE_MODES,
-           rotation=30)
+plt.xticks(np.arange(scores.shape[1])+0.5*width, merge_strategy,
+          rotation=30)
 plt.title("Neural Network Classifiers with Image Vectors")
-for i in range(len(MERGE_MODES)):
-    print(MERGE_MODES[i] + " accuracy score with Inception-V3 : {0}        ResNet-50 :{1}      ".format(scores[0][i],
-                                                                                                        scores[1][i]))
+for i in range(len(merge_strategy)):
+    print(merge_strategy[i]+" accuracy score with Inception-V3 : {0}        ResNet-50 :{1}      ".format(scores[0][i], scores[1][i]))

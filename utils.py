@@ -1,7 +1,9 @@
 import os
+from random import shuffle
 import itertools
 import numpy as np
 import joblib
+
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 from sklearn.model_selection import KFold
 
@@ -123,4 +125,39 @@ def save_model(model, model_file):
 def get_model_file(data_dir, vector_name, merge_mode, borf):
     return os.path.join(data_dir, "models", "{:s}-{:s}-{:s}.h5"
                         .format(vector_name, merge_mode, borf))
+
+
+def get_random_image(img_groups, group_names, gid):
+    gname = group_names[gid]
+    photos = img_groups[gname]
+    pid = np.random.choice(np.arange(len(photos)), size=1)[0]
+    pname = photos[pid]
+    return gname + pname + ".jpg"
+
+
+def create_triples(image_dir):
+    img_groups = {}
+    for img_file in os.listdir(image_dir):
+        prefix, suffix = img_file.split(".")
+        gid, pid = prefix[0:4], prefix[4:]
+        if gid in img_groups:
+            img_groups[gid].append(pid)
+        else:
+            img_groups[gid] = [pid]
+    pos_triples, neg_triples = [], []
+    # positive pairs are any combination of images in same group
+    for key in img_groups.keys():
+        triples = [(key + x[0] + ".jpg", key + x[1] + ".jpg", 1)
+                   for x in itertools.combinations(img_groups[key], 2)]
+        pos_triples.extend(triples)
+    # need equal number of negative examples
+    group_names = list(img_groups.keys())
+    for i in range(len(pos_triples)):
+        g1, g2 = np.random.choice(np.arange(len(group_names)), size=2, replace=False)
+        left = get_random_image(img_groups, group_names, g1)
+        right = get_random_image(img_groups, group_names, g2)
+        neg_triples.append((left, right, 0))
+    pos_triples.extend(neg_triples)
+    shuffle(pos_triples)
+    return pos_triples
 
